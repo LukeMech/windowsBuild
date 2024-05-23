@@ -32,7 +32,7 @@ jobs:
       
     - name: Build ISO
       continue-on-error: true
-      if: ${{ steps.dwnld.outputs.needsUpd == 'true' }}
+      if: ${{ steps.dwnld.outputs.needsUpd == true }}
       run: |
         work\uup_download_windows.cmd
     
