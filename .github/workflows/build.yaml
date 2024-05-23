@@ -3,7 +3,7 @@ name: Build
 on:
   push:
   schedule:
-    - cron: '0 * * * *'  # Runs every hour at the start of the hour
+    - cron: '0 0 * * *'  # Runs every day at midnight UTC
 
 jobs:
 
@@ -14,6 +14,8 @@ jobs:
       ver: ${{ steps.next_ver_code.outputs.NEXT_VER_CODE }}
       
     steps:
+    - uses: actions/checkout@v4
+
     - name: Get next version code
       id: next_ver_code
       env:
@@ -60,27 +62,15 @@ jobs:
       run: |
         work\uup_download_windows.cmd || true
         
-        case "${{ matrix.channel }}" in
-            "canary")
-              echo "channel=Canary for canary" >> $GITHUB_OUTPUT
-              ;;
-            "wif")
-              echo "channel=Dev for wif" >> $GITHUB_OUTPUT
-              ;;
-            "wis")
-              echo "channel=Beta for wis" >> $GITHUB_OUTPUT
-              ;;
-            "rp")
-              echo "channel=ReleasePreview for rp" >> $GITHUB_OUTPUT
-              ;;
-            "retail")
-              echo "channel=Stable for retail" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "::error::Unsupported channel"
-              exit 1
-              ;;
-        esac
+        $channel = "${{ matrix.channel }}"
+        switch ($channel) {
+            "canary" { echo "channel=Canary for canary" >> $env:GITHUB_OUTPUT }
+            "wif" { echo "channel=Dev for wif" >> $env:GITHUB_OUTPUT }
+            "wis" { echo "channel=Beta for wis" >> $env:GITHUB_OUTPUT }
+            "rp" { echo "channel=ReleasePreview for rp" >> $env:GITHUB_OUTPUT }
+            "retail" { echo "channel=Stable for retail" >> $env:GITHUB_OUTPUT }
+            default { Write-Error "Unsupported channel"; exit 1 }
+        }
         
     - name: Rename ISO
       run: mv work\*.ISO work\${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64.iso || true
@@ -114,6 +104,8 @@ jobs:
     needs: [ init, build ]
     
     steps:
+    - uses: actions/checkout@v4
+
     - name: Read outputs
       uses: cloudposse/github-action-matrix-outputs-read@v1
       id: read
