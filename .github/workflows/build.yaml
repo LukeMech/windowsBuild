@@ -12,6 +12,7 @@ jobs:
       matrix:
         channel: [canary, dev, beta, releasepreview, retail]
 
+    continue-on-error: true
     steps:
     - uses: actions/checkout@v4
     
@@ -26,15 +27,12 @@ jobs:
 
     - name: Get latest UUP set
       id: dwnld
-      continue-on-error: true
       run: |
         python get.py ${{ matrix.channel }}
       
     - name: Build ISO
-      continue-on-error: true
-      if: ${{ steps.dwnld.outputs.needsUpd == true }}
       run: |
-        work\uup_download_windows.cmd
+        work\uup_download_windows.cmd || true
     
     - name: Upload ISO
       uses: actions/upload-artifact@v4
