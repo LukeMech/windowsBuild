@@ -71,17 +71,6 @@ def load_stored_update_id(channel):
         data = json.load(file)
         return data.get(channel)
 
-def save_update_id(channel, update_id):
-    data = {}
-    if os.path.exists("built.json"):
-        with open("built.json", "r") as file:
-            data = json.load(file)
-
-    data[channel] = update_id
-
-    with open("built.json", "w") as file:
-        json.dump(data, file, indent=4)
-
 def load_opts():
     if not os.path.exists("opts.json"):
         raise FileNotFoundError("opts.json not found")
@@ -172,7 +161,8 @@ def main():
         print(f"Old Update ID: {stored_update_id}")
         print(f"New Update ID: {latest_update_id}")
         save_update_id(channel, latest_update_id)
-        subprocess.run(["echo", f"build={highest_build_str} >> $GITHUB_OUTPUT"], shell=True)
+        subprocess.run(["echo", f"build={highest_build_str} >> $env:GITHUB_OUTPUT"], shell=True)
+        subprocess.run(["echo", f"buildId={latest_update_id} >> $env:GITHUB_OUTPUT"], shell=True)
 
         # Load language and editions from opts.json and download the update
         lang, editions = load_opts()

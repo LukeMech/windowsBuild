@@ -64,17 +64,17 @@ jobs:
         
         $channel = "${{ matrix.channel }}"
         switch ($channel) {
-            "canary" { echo "channel=Canary for canary" >> $env:GITHUB_OUTPUT }
-            "wif" { echo "channel=Dev for wif" >> $env:GITHUB_OUTPUT }
-            "wis" { echo "channel=Beta for wis" >> $env:GITHUB_OUTPUT }
-            "rp" { echo "channel=ReleasePreview for rp" >> $env:GITHUB_OUTPUT }
-            "retail" { echo "channel=Stable for retail" >> $env:GITHUB_OUTPUT }
+            "canary" { echo "channel=Canary" >> $env:GITHUB_OUTPUT }
+            "wif" { echo "channel=Dev" >> $env:GITHUB_OUTPUT }
+            "wis" { echo "channel=Beta" >> $env:GITHUB_OUTPUT }
+            "rp" { echo "channel=ReleasePreview" >> $env:GITHUB_OUTPUT }
+            "retail" { echo "channel=Stable" >> $env:GITHUB_OUTPUT }
             default { Write-Error "Unsupported channel"; exit 1 }
         }
         
     - name: Rename ISO
-      run: mv work\*.ISO work\${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64.iso || true
-        
+      run: Move-Item -Path work\*.ISO -Destination "work\${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64.iso" -Force -ErrorAction SilentlyContinue        
+    
     - name: Upload ISO
       uses: actions/upload-artifact@v4
       with:
@@ -98,6 +98,7 @@ jobs:
         matrix-key: ${{ matrix.platform }}
         outputs: |-
           buildNum: ${{ steps.dwnld.outputs.build }}
+          buildId: ${{ steps.dwnld.outputs.buildId }}
        
   release:
     runs-on: ubuntu-latest
@@ -105,20 +106,52 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+        
     - name: Read outputs
       uses: cloudposse/github-action-matrix-outputs-read@v1
       id: read
       with:
         matrix-step-name: build
-          
+        
+    - name: Update currently built list
+      run: |
+        if [ -n "${{ steps.read.outputs.buildId.canary }}" ]; then
+          python updateBuilt.py canary ${{ steps.read.outputs.buildId.canary }}
+        fi
+        if [ -n "${{ steps.read.outputs.buildNum.wif }}" ]; then
+          python updateBuilt.py wif ${{ steps.read.outputs.buildId.wif }}
+        fi
+        if [ -n "${{ steps.read.outputs.buildNum.wis }}" ]; then
+          python updateBuilt.py wis ${{ steps.read.outputs.buildId.wis }}
+        fi
+        if [ -n "${{ steps.read.outputs.buildNum.rp }}" ]; then
+          python updateBuilt.py rp ${{ steps.read.outputs.buildId.rp }}
+        fi
+        if [ -n "${{ steps.read.outputs.buildNum.retail }}" ]; then
+          python updateBuilt.py retail ${{ steps.read.outputs.buildId.retail }}
+        fi
+        
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "release-info[bot]"
+        git commit -a -m "Update list"
+        
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        branch: ${{ github.head_ref }}
+        
     - name: Check if release or delete the release
       id: check
       run: |   
         if [ -n "${{ steps.read.outputs.buildNum.canary }}" ] || [ -n "${{ steps.read.outputs.buildNum.wif }}" ] || [ -n "${{ steps.read.outputs.buildNum.wis }}" ] || [ -n "${{ steps.read.outputs.buildNum.rp }}" ] || [ -n "${{ steps.read.outputs.buildNum.retail }}" ]; then
-          echo "artifacts_exist=true" >> $GITHUB_ENV
+          echo "artifacts_exist=true" >> $env:GITHUB_OUTPUT
         else
-          echo "artifacts_exist=false" >> $GITHUB_ENV
+          echo "artifacts_exist=false" >> $env:GITHUB_OUTPUT
         fi
           
     - name: Release release
