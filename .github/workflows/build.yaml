@@ -8,33 +8,7 @@ on:
   
 jobs:
 
-  init:
-    permissions: write-all
-    runs-on: ubuntu-latest
-    outputs:
-      ver: ${{ steps.next_ver_code.outputs.NEXT_VER_CODE }}
-      
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Get next version code
-      id: next_ver_code
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        TAG=$(gh release list -L 1 | awk -F '\t' '{print $3}')
-        if [ -z "$TAG" ]; then TAG=0; fi
-        echo "NEXT_VER_CODE=$((TAG + 1))" >> $GITHUB_OUTPUT
-          
-    - name: Create release
-      uses: ncipollo/release-action@v1
-      with:
-        name: "Windows"
-        tag: ${{ steps.next_ver_code.outputs.NEXT_VER_CODE }}
-        draft: true
-
   build:
-    needs: [ init ]
     runs-on: windows-latest
     strategy:
       matrix:
@@ -82,13 +56,6 @@ jobs:
         name: ${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64
         path: |
             work/*.iso
-    
-    - name: Upload to Release
-      uses: svenstaro/upload-release-action@v2
-      with:
-        file: work/${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64.iso
-        draft: true
-        tag: ${{ needs.init.outputs.ver }}
         
     ## Write for matrix outputs workaround 
     - name: Write out
@@ -146,26 +113,3 @@ jobs:
       with:
         branch: ${{ github.head_ref }}
         force: true
-        
-    - name: Check if release or delete the release
-      id: check
-      run: |   
-        if [ -n "${{ steps.read.outputs.buildNum.canary }}" ] || [ -n "${{ steps.read.outputs.buildNum.wif }}" ] || [ -n "${{ steps.read.outputs.buildNum.wis }}" ] || [ -n "${{ steps.read.outputs.buildNum.rp }}" ] || [ -n "${{ steps.read.outputs.buildNum.retail }}" ]; then
-          echo "artifacts_exist=true" >> $env:GITHUB_OUTPUT
-        else
-          echo "artifacts_exist=false" >> $env:GITHUB_OUTPUT
-        fi
-          
-    - name: Release release
-      if: ${{ steps.check.outputs.artifacts_exist }}
-      uses: test-room-7/action-publish-release-drafts@v0
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        tag-name: ${{ needs.init.outputs.ver }}
-        
-    - name: Discard release
-      if: ${{ !steps.check.outputs.artifacts_exist }} 
-      uses: dev-drprasad/delete-tag-and-release@v1.1
-      with:
-        tag_name: ${{ needs.init.outputs.ver }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}

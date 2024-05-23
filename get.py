@@ -4,10 +4,9 @@ import time
 import json
 import os
 import zipfile
-import subprocess
 import re
 from bs4 import BeautifulSoup
-
+    
 highest_build_str = 0
 def get_channel_update_id(channel, max_retries=5, retry_delay=5):
     url = f"https://uupdump.net/fetchupd.php?arch=amd64&ring={channel}"
@@ -162,8 +161,9 @@ def main():
         print(f"New update found for channel: {channel}")
         print(f"New Update ID: {latest_update_id}")
         print(f"New Update Build: {highest_build_str}")
-        subprocess.run(f"echo build={highest_build_str} >> $env:GITHUB_OUTPUT", shell=True)
-        subprocess.run(f"echo buildId={latest_update_id} >> $env:GITHUB_OUTPUT", shell=True)
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+            print(f'build={highest_build_str}', file=fh)
+            print(f'buildId={latest_update_id}', file=fh)
 
         # Load language and editions from opts.json and download the update
         lang, editions = load_opts()
