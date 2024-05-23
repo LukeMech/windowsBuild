@@ -62,16 +62,12 @@ def download_update(update_id, lang, editions):
     response.raise_for_status()  # Raise an error for bad status codes
     
     # Save the downloaded file
-    filename = f"update_{update_id}.zip"
+    filename = "xdxd.zip"
     with open(filename, 'wb') as file:
         file.write(response.content)
     
     print(f"Downloaded file to {filename}")
     return filename
-
-# Example usage
-download_update("your_update_id", "your_lang", ["edition1", "edition2"])
-
 
 def extract_zip(file_path, extract_to):
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
