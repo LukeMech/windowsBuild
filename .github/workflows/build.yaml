@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour at the start of the hour
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        channel: [canary, dev, beta, releasepreview, retail]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        pip install requests
+
+    - name: Get latest UUP set
+      id: dwnld
+      run: |
+        python get.py ${{ matrix.channel }}
+      
+    - name: Build ISO
+      if: ${{ steps.dwnld.outputs.needsUpd == 'true' }}
+      run: |
+        work\uup_download_windows.cmd
+    
+    - name: Upload ISO
+      uses: actions/upload-artifact@v4
+      with:
+        name: ISO-${{ matrix.channel }}
+        path: |
+            work/*.ISO
+            work/*.iso
