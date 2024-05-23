@@ -163,7 +163,7 @@ jobs:
         
     - name: Discard release
       if: ${{ !steps.check.outputs.artifacts_exist }} 
-      uses: dev-drprasad/delete-tag-and-release@v1
+      uses: dev-drprasad/delete-tag-and-release@v1.1
       with:
         tag_name: ${{ needs.init.outputs.ver }}
         github_token: ${{ secrets.GITHUB_TOKEN }}
