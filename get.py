@@ -108,6 +108,23 @@ def extract_zip(file_path, extract_to):
         zip_ref.extractall(extract_to)
     print(f"Extracted {file_path} to {extract_to}")
 
+def replace_powershell_with_pwsh(file_path):
+    try:
+        # Read the content of the file
+        with open(file_path, 'r') as file:
+            content = file.read()
+
+        # Replace "powershell" with "pwsh"
+        modified_content = content.replace("powershell", "pwsh")
+
+        # Write the modified content back to the file
+        with open(file_path, 'w') as file:
+            file.write(modified_content)
+
+        print(f"Successfully replaced 'powershell' with 'pwsh' in {file_path}")
+    except Exception as e:
+        print(f"An error occurred while replacing 'powershell' with 'pwsh': {e}")
+
 def main():
     if len(sys.argv) != 2:
         print("Usage: get.py <channel>")
@@ -139,6 +156,8 @@ def main():
 
         # Extract the downloaded zip file to the "work" folder
         extract_zip(zip_file_path, "work")
+
+        replace_powershell_with_pwsh("work\\uup_download_windows.cmd")
 
         subprocess.run(["echo", "needsUpd=true >> $GITHUB_OUTPUT"], shell=True)
 
