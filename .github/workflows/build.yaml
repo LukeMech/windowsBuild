@@ -32,6 +32,7 @@ jobs:
       
     - name: Build ISO
       run: |
+        pwsh -Command "(Get-Content -Path work\uup_download_windows.cmd) | ForEach-Object { $_ -replace 'powershell', 'pwsh' } | Set-Content -Path work\uup_download_windows.cmd"
         work\uup_download_windows.cmd || true
     
     - name: Upload ISO
