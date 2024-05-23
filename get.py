@@ -78,9 +78,9 @@ def load_opts():
         data = json.load(file)
         return data.get("lang", "en-US"), data.get("editions", ["core", "professional"])
 
-def download_update(update_id, lang, editions, max_retries=5, retry_delay=5):
+def download_update(update_id, lang, editions, arch, max_retries=5, retry_delay=5):
     editions_str = ';'.join(editions)
-    url = f"https://uupdump.net/get.php?id={update_id}&pack={lang}&edition={editions_str}&arch=amd64"
+    url = f"https://uupdump.net/get.php?id={update_id}&pack={lang}&edition={editions_str}&arch={arch}"
     
     # Define the payload
     download_package_body = {
@@ -99,7 +99,7 @@ def download_update(update_id, lang, editions, max_retries=5, retry_delay=5):
             response.raise_for_status()  # Raise an error for bad status codes
             
             # Save the downloaded file
-            filename = f"windows.zip"
+            filename = f"windows-{arch}-{lang}.zip"
             with open(filename, 'wb') as file:
                 file.write(response.content)
             
@@ -167,12 +167,15 @@ def main():
 
         # Load language and editions from opts.json and download the update
         lang, editions = load_opts()
-        zip_file_path = download_update(latest_update_id, lang, editions)
+        zip_file_path = download_update(latest_update_id, lang, editions, 'amd64')
+        zip_file_path_2 = download_update(latest_update_id, lang, editions, 'arm64')
 
         # Extract the downloaded zip file to the "work" folder
-        extract_zip(zip_file_path, "work")
+        extract_zip(zip_file_path, "work-x64")
+        extract_zip(zip_file_path_2, "work-arm64")
 
-        replace_powershell_with_pwsh("work\\uup_download_windows.cmd")
+        replace_powershell_with_pwsh("work-x64\\uup_download_windows.cmd")
+        replace_powershell_with_pwsh("work-arm64\\uup_download_windows.cmd")
 
 if __name__ == "__main__":
     main()
