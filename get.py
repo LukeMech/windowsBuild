@@ -5,48 +5,58 @@ import json
 import os
 import zipfile
 import subprocess
+import re
 from bs4 import BeautifulSoup
 
+highest_build_str = 0
 def get_channel_update_id(channel, max_retries=5, retry_delay=5):
     url = f"https://uupdump.net/fetchupd.php?arch=amd64&ring={channel}"
     
     # Retry loop
+    E = False
     for attempt in range(max_retries):
+        if E:
+            return
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise an error for bad status codes
-            
             soup = BeautifulSoup(response.text, 'html.parser')
             updates = soup.find_all('tr')
-
+            
             highest_build = 0
             update_id = None
 
             for update in updates:
                 name_tag = update.find('a')
                 id_tag = update.find('code')
-                if name_tag and id_tag and name_tag.text.startswith("Windows"):
-                    build_match = re.search(r'\((\d+\.\d+)\)', name_tag.text)
-                    if build_match:
-                        build_str = build_match.group(1)
-                        build = float(build_str.replace('.', ''))
-                        if build > highest_build:
-                            highest_build = build
-                            update_id = id_tag.text.strip()
+                compilation = update.find('div', class_='sub header')
+                if name_tag and id_tag:
+                    name_tag =  re.sub(' +', ' ', name_tag.text.strip())
+                    compilation_num_str = re.sub(' +', ' ', compilation.text.strip().split(" ")[-1])
+                    compilation_num = float(re.sub(r'\.(?=.*\.)', '', compilation_num_str))
+                    
+                    if name_tag.startswith("Windows") and compilation_num > highest_build:
+                        highest_build = compilation_num
+                        global highest_build_str
+                        highest_build_str = compilation_num_str
+                        
+                        id_tag_text = re.sub(' +', ' ', id_tag.text.strip())
+                        update_id = id_tag_text
             
-            subprocess.run(["echo", f"build={highest_build} >> $GITHUB_OUTPUT"], shell=True)
             return update_id
         
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429:  # Too Many Requests
-                print(f"Too many requests. Waiting {retry_delay} seconds before retrying...")
+                print(f"Too many requests. Waiting {retry_delay} seconds before retrying...", flush=True)
                 time.sleep(retry_delay)
                 continue
             else:
+                E=True
                 raise  # Raise other HTTP errors
-            
+   
         except Exception as e:
-            print(f"An error occurred: {e}")
+            E=True
+            print(f"An error occurred: {e}", flush=True)
             continue
 
     # If max retries reached without success
@@ -99,7 +109,7 @@ def download_update(update_id, lang, editions, max_retries=5, retry_delay=5):
             response.raise_for_status()  # Raise an error for bad status codes
             
             # Save the downloaded file
-            filename = f"update_{update_id}.zip"
+            filename = f"windows.zip"
             with open(filename, 'wb') as file:
                 file.write(response.content)
             
@@ -150,7 +160,7 @@ def main():
 
     latest_update_id = get_channel_update_id(channel)
     if latest_update_id is None:
-        print(f"No Windows updates found for channel: {channel}")
+        print(f"No Windows version found for channel: {channel}")
         sys.exit(1)
 
     stored_update_id = load_stored_update_id(channel)
@@ -162,6 +172,7 @@ def main():
         print(f"Old Update ID: {stored_update_id}")
         print(f"New Update ID: {latest_update_id}")
         save_update_id(channel, latest_update_id)
+        subprocess.run(["echo", f"build={highest_build_str} >> $GITHUB_OUTPUT"], shell=True)
 
         # Load language and editions from opts.json and download the update
         lang, editions = load_opts()
