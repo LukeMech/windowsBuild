@@ -6,16 +6,36 @@ import os
 import zipfile
 import subprocess
 
-def get_channel_update_id(channel):
+def get_channel_update_id(channel, max_retries=5, retry_delay=5):
     url = f"https://api.uupdump.net/fetchupd.php?ring={channel}"
-    response = requests.get(url)
-    response.raise_for_status()  # Raise an error for bad status codes
-    data = response.json()
+    
+    # Retry loop
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raise an error for bad status codes
+            data = response.json()
 
-    updates = data.get("response", {}).get("updateArray", [])
-    for update in updates:
-        if update["updateTitle"].startswith("Windows"):
-            return update["updateId"]
+            updates = data.get("response", {}).get("updateArray", [])
+            for update in updates:
+                if update["updateTitle"].startswith("Windows"):
+                    return update["updateId"]
+            return None
+        
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:  # Too Many Requests
+                print(f"Too many requests. Waiting {retry_delay} seconds before retrying...")
+                time.sleep(retry_delay)
+                continue
+            else:
+                raise  # Raise other HTTP errors
+            
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            continue
+
+    # If max retries reached without success
+    print(f"Failed to get update ID after {max_retries} attempts.")
     return None
 
 def load_stored_update_id(channel):
