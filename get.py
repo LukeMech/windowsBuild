@@ -160,10 +160,10 @@ def main():
         print(f"No new updates for channel: {channel}")
     else:
         print(f"New update found for channel: {channel}")
-        print(f"Old Update ID: {stored_update_id}")
         print(f"New Update ID: {latest_update_id}")
-        subprocess.run(["echo", f"build={highest_build_str} >> $env:GITHUB_OUTPUT"], shell=True)
-        subprocess.run(["echo", f"buildId={latest_update_id} >> $env:GITHUB_OUTPUT"], shell=True)
+        print(f"New Update Build: {highest_build_str}")
+        subprocess.run(f"echo build={highest_build_str} >> $env:GITHUB_OUTPUT", shell=True)
+        subprocess.run(f"echo buildId={latest_update_id} >> $env:GITHUB_OUTPUT", shell=True)
 
         # Load language and editions from opts.json and download the update
         lang, editions = load_opts()
