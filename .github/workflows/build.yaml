@@ -6,7 +6,32 @@ on:
     - cron: '0 * * * *'  # Runs every hour at the start of the hour
 
 jobs:
+
+  init:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    outputs:
+      ver: ${{ steps.next_ver_code.outputs.NEXT_VER_CODE }}
+      
+    steps:
+    - name: Get next version code
+      id: next_ver_code
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG=$(gh release list -L 1 | awk -F '\t' '{print $3}')
+        if [ -z "$TAG" ]; then TAG=0; fi
+        echo "NEXT_VER_CODE=$((TAG + 1))" >> $GITHUB_OUTPUT
+          
+    - name: Create release
+      uses: ncipollo/release-action@v1
+      with:
+        name: "Windows"
+        tag: ${{ steps.next_ver_code.outputs.NEXT_VER_CODE }}
+        draft: true
+
   build:
+    needs: [ init ]
     runs-on: windows-latest
     strategy:
       matrix:
@@ -31,13 +56,89 @@ jobs:
         python get.py ${{ matrix.channel }}
       
     - name: Build ISO
+      id: build
       run: |
         work\uup_download_windows.cmd || true
-    
+        
+        case "${{ matrix.channel }}" in
+            "canary")
+              echo "channel=Canary for canary" >> $GITHUB_OUTPUT
+              ;;
+            "wif")
+              echo "channel=Dev for wif" >> $GITHUB_OUTPUT
+              ;;
+            "wis")
+              echo "channel=Beta for wis" >> $GITHUB_OUTPUT
+              ;;
+            "rp")
+              echo "channel=ReleasePreview for rp" >> $GITHUB_OUTPUT
+              ;;
+            "retail")
+              echo "channel=Stable for retail" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "::error::Unsupported channel"
+              exit 1
+              ;;
+        esac
+        
+    - name: Rename ISO
+      run: mv work\*.ISO work\${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64.iso || true
+        
     - name: Upload ISO
       uses: actions/upload-artifact@v4
       with:
-        name: ISO-${{ steps.dwnld.outputs.build }}
+        name: ${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64
         path: |
-            work/*.ISO
             work/*.iso
+    
+    - name: Upload to Release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        file: work/${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64.iso
+        draft: true
+        tag: ${{ needs.init.outputs.ver }}
+        
+    ## Write for matrix outputs workaround 
+    - name: Write out
+      uses: cloudposse/github-action-matrix-outputs-write@v1
+      id: out
+      with:
+        matrix-step-name: build
+        matrix-key: ${{ matrix.platform }}
+        outputs: |-
+          buildNum: ${{ steps.dwnld.outputs.build }}
+       
+  release:
+    runs-on: ubuntu-latest
+    needs: [ init, build ]
+    
+    steps:
+    - name: Read outputs
+      uses: cloudposse/github-action-matrix-outputs-read@v1
+      id: read
+      with:
+        matrix-step-name: build
+          
+    - name: Check if release or delete the release
+      id: check
+      run: |   
+        if [ -n "${{ steps.read.outputs.buildNum.canary }}" ] || [ -n "${{ steps.read.outputs.buildNum.wif }}" ] || [ -n "${{ steps.read.outputs.buildNum.wis }}" ] || [ -n "${{ steps.read.outputs.buildNum.rp }}" ] || [ -n "${{ steps.read.outputs.buildNum.retail }}" ]; then
+          echo "artifacts_exist=true" >> $GITHUB_ENV
+        else
+          echo "artifacts_exist=false" >> $GITHUB_ENV
+        fi
+          
+    - name: Release release
+      if: ${{ steps.check.outputs.artifacts_exist }}
+      uses: test-room-7/action-publish-release-drafts@v0
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        tag-name: ${{ needs.init.outputs.ver }}
+        
+    - name: Discard release
+      if: ${{ !steps.check.outputs.artifacts_exist }} 
+      uses: dev-drprasad/delete-tag-and-release@v1
+      with:
+        tag_name: ${{ needs.init.outputs.ver }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
