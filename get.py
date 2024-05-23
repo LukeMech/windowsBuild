@@ -7,7 +7,7 @@ import zipfile
 import subprocess
 
 def get_channel_update_id(channel, max_retries=5, retry_delay=5):
-    url = f"https://api.uupdump.net/fetchupd.php?ring={channel}"
+    url = f"https://api.uupdump.net/fetchupd.php?ring={channel}&arch=amd64"
     
     # Retry loop
     for attempt in range(max_retries):
@@ -67,7 +67,7 @@ def load_opts():
 
 def download_update(update_id, lang, editions, max_retries=5, retry_delay=5):
     editions_str = ';'.join(editions)
-    url = f"https://uupdump.net/get.php?id={update_id}&pack={lang}&edition={editions_str}"
+    url = f"https://uupdump.net/get.php?id={update_id}&pack={lang}&edition={editions_str}&arch=amd64"
     
     # Define the payload
     download_package_body = {

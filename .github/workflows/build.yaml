@@ -10,7 +10,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        channel: [canary, dev, beta, releasepreview, retail]
+        channel: [canary, wif, wis, rp, retail]
 
     continue-on-error: true
     steps:
