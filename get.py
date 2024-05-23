@@ -160,7 +160,6 @@ def main():
         print(f"New update found for channel: {channel}")
         print(f"Old Update ID: {stored_update_id}")
         print(f"New Update ID: {latest_update_id}")
-        save_update_id(channel, latest_update_id)
         subprocess.run(["echo", f"build={highest_build_str} >> $env:GITHUB_OUTPUT"], shell=True)
         subprocess.run(["echo", f"buildId={latest_update_id} >> $env:GITHUB_OUTPUT"], shell=True)
 

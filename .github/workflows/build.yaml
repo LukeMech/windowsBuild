@@ -138,12 +138,13 @@ jobs:
         
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "release-info[bot]"
-        git commit -a -m "Update list"
+        git commit -a -m "Update list" || true
         
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
         branch: ${{ github.head_ref }}
+        force: true
         
     - name: Check if release or delete the release
       id: check
