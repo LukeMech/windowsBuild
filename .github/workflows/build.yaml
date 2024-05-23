@@ -37,7 +37,7 @@ jobs:
     - name: Upload ISO
       uses: actions/upload-artifact@v4
       with:
-        name: ISO-${{ matrix.channel }}
+        name: ISO-${{ steps.dwnld.outputs.build }}
         path: |
             work/*.ISO
             work/*.iso

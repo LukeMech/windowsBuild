@@ -5,22 +5,37 @@ import json
 import os
 import zipfile
 import subprocess
+from bs4 import BeautifulSoup
 
 def get_channel_update_id(channel, max_retries=5, retry_delay=5):
-    url = f"https://api.uupdump.net/fetchupd.php?ring={channel}&arch=amd64"
+    url = f"https://uupdump.net/fetchupd.php?arch=amd64&ring={channel}"
     
     # Retry loop
     for attempt in range(max_retries):
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise an error for bad status codes
-            data = response.json()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            updates = soup.find_all('tr')
 
-            updates = data.get("response", {}).get("updateArray", [])
+            highest_build = 0
+            update_id = None
+
             for update in updates:
-                if update["updateTitle"].startswith("Windows"):
-                    return update["updateId"]
-            return None
+                name_tag = update.find('a')
+                id_tag = update.find('code')
+                if name_tag and id_tag and name_tag.text.startswith("Windows"):
+                    build_match = re.search(r'\((\d+\.\d+)\)', name_tag.text)
+                    if build_match:
+                        build_str = build_match.group(1)
+                        build = float(build_str.replace('.', ''))
+                        if build > highest_build:
+                            highest_build = build
+                            update_id = id_tag.text.strip()
+            
+            subprocess.run(["echo", f"build={highest_build} >> $GITHUB_OUTPUT"], shell=True)
+            return update_id
         
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429:  # Too Many Requests
@@ -136,14 +151,12 @@ def main():
     latest_update_id = get_channel_update_id(channel)
     if latest_update_id is None:
         print(f"No Windows updates found for channel: {channel}")
-        subprocess.run(["echo", "needsUpd=false >> $GITHUB_OUTPUT"], shell=True)
         sys.exit(1)
 
     stored_update_id = load_stored_update_id(channel)
 
     if stored_update_id == latest_update_id:
         print(f"No new updates for channel: {channel}")
-        subprocess.run(["echo", "needsUpd=false >> $GITHUB_OUTPUT"], shell=True)
     else:
         print(f"New update found for channel: {channel}")
         print(f"Old Update ID: {stored_update_id}")
@@ -158,8 +171,6 @@ def main():
         extract_zip(zip_file_path, "work")
 
         replace_powershell_with_pwsh("work\\uup_download_windows.cmd")
-
-        subprocess.run(["echo", "needsUpd=true >> $GITHUB_OUTPUT"], shell=True)
 
 if __name__ == "__main__":
     main()
