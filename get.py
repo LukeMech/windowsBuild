@@ -85,9 +85,11 @@ def download_update(update_id, lang, editions, max_retries=5, retry_delay=5):
     
     # Define the payload
     download_package_body = {
-        'autodl': 2,  # Assuming no virtual editions
+        'autodl': 2,
         'updates': 1,
-        'cleanup': 1
+        'cleanup': 1,
+        'netfx': 1,
+        'esd': 1
     }
     
     # Retry loop
