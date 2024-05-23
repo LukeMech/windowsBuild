@@ -1,5 +1,6 @@
 import sys
 import requests
+import time
 import json
 import os
 import zipfile
@@ -44,30 +45,43 @@ def load_opts():
         data = json.load(file)
         return data.get("lang", "en-US"), data.get("editions", ["core", "professional"])
 
-import requests
-
-def download_update(update_id, lang, editions):
+def download_update(update_id, lang, editions, max_retries=5, retry_delay=5):
     editions_str = ';'.join(editions)
     url = f"https://uupdump.net/get.php?id={update_id}&pack={lang}&edition={editions_str}"
     
     # Define the payload
     download_package_body = {
-        'autodl': 2,
+        'autodl': 2,  # Assuming no virtual editions
         'updates': 1,
         'cleanup': 1
     }
     
-    # Send POST request to download the package
-    response = requests.post(url, data=download_package_body)
-    response.raise_for_status()  # Raise an error for bad status codes
-    
-    # Save the downloaded file
-    filename = "xdxd.zip"
-    with open(filename, 'wb') as file:
-        file.write(response.content)
-    
-    print(f"Downloaded file to {filename}")
-    return filename
+    # Retry loop
+    for attempt in range(max_retries):
+        try:
+            # Send POST request to download the package
+            response = requests.post(url, data=download_package_body)
+            response.raise_for_status()  # Raise an error for bad status codes
+            
+            # Save the downloaded file
+            filename = f"update_{update_id}.zip"
+            with open(filename, 'wb') as file:
+                file.write(response.content)
+            
+            print(f"Downloaded file to {filename}")
+            return filename
+        
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 429:  # Too Many Requests
+                print(f"Too many requests. Waiting {retry_delay} seconds before retrying...")
+                time.sleep(retry_delay)
+                continue
+            else:
+                raise  # Raise other HTTP errors
+            
+    # If max retries reached without success
+    print(f"Failed to download after {max_retries} attempts.")
+    return None
 
 def extract_zip(file_path, extract_to):
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
