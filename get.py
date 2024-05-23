@@ -1,7 +1,6 @@
 import sys
 import requests
 import json
-from bs4 import BeautifulSoup
 import os
 import zipfile
 import subprocess
@@ -45,42 +44,34 @@ def load_opts():
         data = json.load(file)
         return data.get("lang", "en-US"), data.get("editions", ["core", "professional"])
 
+import requests
+
 def download_update(update_id, lang, editions):
     editions_str = ';'.join(editions)
-    url = f"https://uupdump.net/download.php?id={update_id}&pack={lang}&edition={editions_str}"
+    url = f"https://uupdump.net/get.php?id={update_id}&pack={lang}&edition={editions_str}"
     
-    # Fetch the page content
-    response = requests.get(url)
+    # Define the payload
+    download_package_body = {
+        'autodl': 2,
+        'updates': 1,
+        'cleanup': 1
+    }
+    
+    # Send POST request to download the package
+    response = requests.post(url, data=download_package_body)
     response.raise_for_status()  # Raise an error for bad status codes
     
-    # Parse HTML
-    soup = BeautifulSoup(response.text, 'html.parser')
+    # Save the downloaded file
+    filename = f"update_{update_id}.zip"
+    with open(filename, 'wb') as file:
+        file.write(response.content)
     
-    # Find checkboxes with class 'checked' for parameters 'esd', 'netfx', 'cleanup', and 'updates'
-    checkboxes = soup.find_all('input', {'name': ['esd', 'netfx', 'cleanup', 'updates'], 'class': 'checked'})
-    
-    # Find the submit button
-    submit_button = soup.find('input', {'type': 'submit'})
-    
-    # If checkboxes and submit button found, continue
-    if checkboxes and submit_button:
-        # Create payload with checked checkboxes
-        payload = {checkbox['name']: 'checked' for checkbox in checkboxes}
-        
-        # Send POST request to download the file
-        download_response = requests.post(url, data=payload)
-        download_response.raise_for_status()  # Raise an error for bad status codes
-        
-        # Assuming the file is in the response content, you can save it
-        filename = f"update_{update_id}.zip"
-        with open(filename, 'wb') as file:
-            file.write(download_response.content)
-        
-        print(f"Downloaded file to {filename}")
-        return filename
-    else:
-        print("Checkboxes or submit button not found.")
-        return None
+    print(f"Downloaded file to {filename}")
+    return filename
+
+# Example usage
+download_update("your_update_id", "your_lang", ["edition1", "edition2"])
+
 
 def extract_zip(file_path, extract_to):
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
