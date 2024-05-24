@@ -89,20 +89,20 @@ jobs:
         
     - name: Update currently built list
       run: |
-        if [ -n "${{ steps.read.outputs.buildId.canary }}" ]; then
-          python updateBuilt.py canary ${{ steps.read.outputs.buildId.canary }}
+        if [ -n "${{ fromJson(steps.read.outputs.result).buildId.canary }}" ]; then
+          python updateBuilt.py canary ${{ fromJson(steps.read.outputs.result).buildId.canary }}
         fi
-        if [ -n "${{ steps.read.outputs.buildNum.wif }}" ]; then
-          python updateBuilt.py wif ${{ steps.read.outputs.buildId.wif }}
+        if [ -n "${{ fromJson(steps.read.outputs.result).buildNum.wif }}" ]; then
+          python updateBuilt.py wif ${{ fromJson(steps.read.outputs.result).buildId.wif }}
         fi
-        if [ -n "${{ steps.read.outputs.buildNum.wis }}" ]; then
-          python updateBuilt.py wis ${{ steps.read.outputs.buildId.wis }}
+        if [ -n "${{ fromJson(steps.read.outputs.result).buildNum.wis }}" ]; then
+          python updateBuilt.py wis ${{ fromJson(steps.read.outputs.result).buildId.wis }}
         fi
-        if [ -n "${{ steps.read.outputs.buildNum.rp }}" ]; then
-          python updateBuilt.py rp ${{ steps.read.outputs.buildId.rp }}
+        if [ -n "${{ fromJson(steps.read.outputs.result).buildNum.rp }}" ]; then
+          python updateBuilt.py rp ${{ fromJson(steps.read.outputs.result).buildId.rp }}
         fi
-        if [ -n "${{ steps.read.outputs.buildNum.retail }}" ]; then
-          python updateBuilt.py retail ${{ steps.read.outputs.buildId.retail }}
+        if [ -n "${{ fromJson(steps.read.outputs.result).buildNum.retail }}" ]; then
+          python updateBuilt.py retail ${{ fromJson(steps.read.outputs.result).buildId.retail }}
         fi
         
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
