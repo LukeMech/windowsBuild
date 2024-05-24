@@ -36,7 +36,6 @@ jobs:
       id: build
       run: |
         work-x64\uup_download_windows.cmd || true
-        work-arm64\uup_download_windows.cmd || true
 
         $channel = "${{ matrix.channel }}"
         switch ($channel) {
@@ -50,8 +49,7 @@ jobs:
         
     - name: Rename ISOs
       run: |
-        Move-Item -Path work-x64\*.ISO -Destination "work-x64\${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-x64.iso" -Force -ErrorAction SilentlyContinue 
-        Move-Item -Path work-arm64\*.ISO -Destination "work-arm64\${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64.iso" -Force -ErrorAction SilentlyContinue                
+        Move-Item -Path work-x64\*.ISO -Destination "work-x64\${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-x64.iso" -Force -ErrorAction SilentlyContinue               
     
     - name: Upload x64 ISO
       uses: actions/upload-artifact@v4
@@ -59,13 +57,6 @@ jobs:
         name: ${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-x64
         path: |
             work-x64/*.iso
-    
-    - name: Upload arm64 ISO
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.build.outputs.channel }}-${{ steps.dwnld.outputs.build }}-arm64
-        path: |
-            work-arm64/*.iso
         
     ## Write for matrix outputs workaround 
     - name: Write out
