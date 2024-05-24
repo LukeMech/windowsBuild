@@ -1,5 +1,6 @@
 import json
 import sys
+import os
 
 def save_update_id(channel, update_id):
     data = {}
@@ -21,3 +22,6 @@ def main():
     update_id = sys.argv[2]
     
     save_update_id(channel, update_id)
+    
+if __name__ == "__main__":
+    main()
